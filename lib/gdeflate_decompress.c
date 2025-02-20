@@ -77,6 +77,30 @@ libdeflate_gdeflate_decompress(struct libdeflate_decompressor * restrict d,
 	return LIBDEFLATE_SUCCESS;
 }
 
+LIBDEFLATEEXPORT enum libdeflate_result LIBDEFLATEAPI
+libdeflate_gdeflate_decompress_ex(struct libdeflate_gdeflate_decompressor * restrict d,
+				  struct libdeflate_gdeflate_in_page * restrict in_pages,
+				  struct libdeflate_gdeflate_out_page * restrict out_pages, size_t npages)
+{
+	if (unlikely(in_pages == NULL || out_pages == NULL || npages == 0))
+		return LIBDEFLATE_BAD_DATA;
+
+	for (size_t npage = 0; npage < npages; npage++) {
+		size_t page_out_nbytes_ret, page_in_nbytes_ret;
+		enum libdeflate_result res;
+
+		res = decompress_impl(d, in_pages[npage].data,
+				      in_pages[npage].nbytes, out_pages[npage].data,
+				      out_pages[npage].nbytes, &page_in_nbytes_ret,
+				      &page_out_nbytes_ret);
+
+		if (unlikely(res != LIBDEFLATE_SUCCESS))
+			return res;
+	}
+
+	return LIBDEFLATE_SUCCESS;
+}
+
 LIBDEFLATEEXPORT struct libdeflate_decompressor * LIBDEFLATEAPI
 libdeflate_alloc_gdeflate_decompressor(void)
 {

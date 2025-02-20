@@ -202,6 +202,30 @@ libdeflate_gdeflate_compress(struct libdeflate_compressor *c,
 	return out_nbytes;
 }
 
+LIBDEFLATEEXPORT size_t LIBDEFLATEAPI
+libdeflate_gdeflate_compress_ex(struct libdeflate_compressor *c,
+			        const struct libdeflate_gdeflate_in_page* in_pages,
+			        struct libdeflate_gdeflate_out_page* out_pages, size_t npages)
+{
+	if (unlikely(out_pages == NULL || in_pages == NULL))
+		return 0;
+
+	for (size_t page = 0; page < npages; page++) {
+		size_t comp_page_nbytes;
+
+		comp_page_nbytes = (*c->impl)(c, in_pages[page].data, in_pages[page].nbytes,
+					      out_pages[page].data, out_pages[page].nbytes);
+
+		out_pages[page].nbytes = comp_page_nbytes;
+
+		/* Page did not fit - bail out. */
+		if (unlikely(comp_page_nbytes == 0))
+			return page;
+	}
+
+	return npages;
+}
+
 LIBDEFLATEEXPORT void LIBDEFLATEAPI
 libdeflate_free_gdeflate_compressor(struct libdeflate_compressor *c)
 {
@@ -212,19 +236,11 @@ LIBDEFLATEEXPORT size_t LIBDEFLATEAPI
 libdeflate_gdeflate_compress_bound(struct libdeflate_compressor *c,
 				   size_t in_nbytes, size_t *out_npages)
 {
-	/*
-	 * The worst case is all uncompressed blocks where one block has length
-	 * <= MIN_BLOCK_LENGTH and the others have length MIN_BLOCK_LENGTH.
-	 * Each uncompressed block has 5 bytes of overhead: 1 for BFINAL, BTYPE,
-	 * and alignment to a byte boundary; 2 for LEN; and 2 for NLEN.
-	 */
-	size_t max_num_blocks = MAX(DIV_ROUND_UP(in_nbytes, MIN_BLOCK_LENGTH), 1);
+	const size_t page_bound = libdeflate_deflate_compress_bound(c, GDEFLATE_PAGE_SIZE);
 	const size_t npages = DIV_ROUND_UP(in_nbytes, GDEFLATE_PAGE_SIZE);
 
 	if (out_npages)
 		*out_npages = npages;
 
-	return ((5 * max_num_blocks) + GDEFLATE_PAGE_SIZE + 1 + OUTPUT_END_PADDING
-		+ (NUM_STREAMS * BITS_PER_PACKET) / 8) * npages
-		;
+	return (page_bound + (NUM_STREAMS * BITS_PER_PACKET) / 8) * npages;
 }

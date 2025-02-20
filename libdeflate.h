@@ -378,6 +378,13 @@ struct libdeflate_gdeflate_out_page {
 	size_t nbytes;
 };
 
+struct libdeflate_gdeflate_in_page {
+	/* Compressed GDEFLATE page data. */
+	const void* data;
+	/* Size in bytes of compressed GDEFLATE page. */
+	size_t nbytes;
+};
+
 /*
  * libdeflate_alloc_gdeflate_compressor() allocates a new compressor that
  * supports GDEFLATE compression.  'compression_level' is the compression
@@ -417,6 +424,21 @@ libdeflate_gdeflate_compress(struct libdeflate_gdeflate_compressor *compressor,
 			     size_t out_npages);
 
 /*
+ * libdeflate_gdeflate_compress_ex() performs raw GDEFLATE compression on
+ * set of pages.  The function attempts to compress 'npages' from 'in_pages'
+ * and writes page results to 'out_pages', which has preallocated 'data'
+ * with 'nbytes' space for each page.  To determine the number of pages
+ * 'out_npages' the input data will be split into and the upper bound on
+ * compressed data use the libdeflate_gdeflate_compress_bound() function.  The
+ * return value is the number of processed pages.  If compression succeeded
+ * the size of each compressed page will be written to 'nbytes' field of 'out_pages'.
+ */
+LIBDEFLATEEXPORT size_t LIBDEFLATEAPI
+libdeflate_gdeflate_compress_ex(struct libdeflate_gdeflate_compressor *compressor,
+				const struct libdeflate_gdeflate_in_page* in_pages,
+				struct libdeflate_gdeflate_out_page* out_pages, size_t npages);
+
+/*
  * libdeflate_gdeflate_compress_bound() returns a worst-case upper bound on the
  * number of bytes of compressed data that may be produced by compressing any
  * buffer of length less than or equal to 'in_nbytes' using
@@ -452,13 +474,6 @@ libdeflate_free_gdeflate_compressor(struct libdeflate_gdeflate_compressor *comp)
 
 struct libdeflate_gdeflate_decompressor;
 
-struct libdeflate_gdeflate_in_page {
-	/* Compressed GDEFLATE page data. */
-	const void *data;
-	/* Size in bytes of compressed GDEFLATE page. */
-	size_t nbytes;
-};
-
 /*
  * libdeflate_alloc_gdeflate_decompressor() allocates a new decompressor that
  * can be used for GDEFLATE decompression.  The return value is a pointer to
@@ -476,7 +491,7 @@ libdeflate_alloc_gdeflate_decompressor(void);
 
 /*
  * libdeflate_gdeflate_decompress() decompresses the GDEFLATE-compressed pages
- * from the 'in_pages' array with 'in_pages' members.  The uncompressed data is
+ * from the 'in_pages' array with 'in_npages' members.  The uncompressed data is
  * written to 'out', a buffer with size 'out_nbytes_avail' bytes.
  * If decompression succeeds, then 0 (LIBDEFLATE_SUCCESS) is returned.
  * Otherwise, a nonzero result code such as LIBDEFLATE_BAD_DATA is returned.  If
@@ -492,6 +507,23 @@ libdeflate_gdeflate_decompress(struct libdeflate_gdeflate_decompressor *decomp,
 			       size_t in_npages, void *out,
 			       size_t out_nbytes_avail,
 			       size_t *actual_out_nbytes_ret);
+
+/*
+ * libdeflate_gdeflate_decompress_ex() decompresses the GDEFLATE-compressed pages
+ * from the 'in_pages' array with 'npages' members.  The uncompressed data is
+ * written to 'out_pages'.
+ * If decompression succeeds, then 0 (LIBDEFLATE_SUCCESS) is returned.
+ * Otherwise, a nonzero result code such as LIBDEFLATE_BAD_DATA is returned.  If
+ * a nonzero result code is returned, then the contents of the output buffer are
+ * undefined.
+ *
+ * libdeflate_gdeflate_decompress_ex() can be used only in cases where the actual
+ * uncompressed size is known.
+ */
+LIBDEFLATEEXPORT enum libdeflate_result LIBDEFLATEAPI
+libdeflate_gdeflate_decompress_ex(struct libdeflate_gdeflate_decompressor *decomp,
+				  struct libdeflate_gdeflate_in_page *in_pages,
+				  struct libdeflate_gdeflate_out_page* out_pages, size_t npages);
 
 /*
  * libdeflate_free_gdeflate_decompressor() frees a decompressor that was
