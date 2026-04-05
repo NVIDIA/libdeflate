@@ -696,7 +696,7 @@ deflate_init_output(struct deflate_output_bitstream *os,
 		os->next += BITS_PER_PACKET/8;
 
 		/* Clear the output.  */
-		put_unaligned_le32(0, os->write_ptr[os->idx]);
+		put_unaligned_le32(0, os->write_ptr[n]);
 
 		/* The next write position is not known yet.  */
 		os->next_ptr[n] = NULL;
@@ -733,8 +733,20 @@ deflate_add_bits(struct deflate_output_bitstream *os,
 	os->input_bitcount[os->idx] -= num_bits;
 
 	/* Accumulated more than a watermark - flush a bit packet.  */
-	if (os->bitcount[os->idx] >= LOW_WATERMARK_BITS)
+	if (os->bitcount[os->idx] >= LOW_WATERMARK_BITS) {
+		/* Guard: if next_ptr is NULL, reserve now to prevent write_ptr
+		 * from becoming NULL after flush promotes next_ptr to write_ptr.
+		 * This fixes a crash when a stream receives 32+ bits across
+		 * consecutive deflate_add_bits calls (e.g. deferred offset copy
+		 * + literal codeword, or block header bits after gdeflate_reset). */
+		if (os->next_ptr[os->idx] == NULL) {
+			os->next_ptr[os->idx] = os->next;
+			os->next += BITS_PER_PACKET / 8;
+			put_unaligned_le32(0, os->next_ptr[os->idx]);
+			os->input_bitcount[os->idx] += BITS_PER_PACKET;
+		}
 		gdeflate_flush_bitpacket(os);
+	}
 
 	/* If the emulated input has less than a watermark bits
 	 * it is time to reserve the next write pointer.  */
@@ -786,7 +798,7 @@ gdeflate_advance(struct deflate_output_bitstream *os)
 static size_t
 deflate_flush_output(struct deflate_output_bitstream *os)
 {
-	if (os->next == os->end) /* overflow?  */
+	if (os->next >= os->end) /* overflow?  */
 		return 0;
 
 	for (int n = 0; n < NUM_STREAMS; n++) {

@@ -242,5 +242,10 @@ libdeflate_gdeflate_compress_bound(struct libdeflate_compressor *c,
 	if (out_npages)
 		*out_npages = npages;
 
-	return (page_bound + (NUM_STREAMS * BITS_PER_PACKET) / 8) * npages;
+	/* page_bound covers worst-case deflate output. The additional overhead
+	 * accounts for: (1) initial 32-stream packet headers (128 bytes),
+	 * (2) GDeflate multi-stream encoding of block headers and Huffman trees
+	 * which go through bit-packing instead of sequential writes, and
+	 * (3) extra reservations from the pre-flush guard in deflate_add_bits. */
+	return (page_bound + 4 * (NUM_STREAMS * BITS_PER_PACKET) / 8) * npages;
 }
