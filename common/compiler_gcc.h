@@ -204,6 +204,7 @@ typedef char  __v64qi __attribute__((__vector_size__(64)));
  * Setup rotation macros similar to MSVS intrinsics.
  * These should recognized by compilers.
  */
+#ifndef _MSC_VER
 #ifndef _rotr16
 #define _rotr16(x,n)	((x>>n) + (x<<(16-n)))
 #endif
@@ -215,3 +216,4 @@ typedef char  __v64qi __attribute__((__vector_size__(64)));
 #ifndef _rotr64
 #define _rotr64(x,n)	((x>>n) + (x<<(64-n)))
 #endif
+#endif /* _MSC_VER */

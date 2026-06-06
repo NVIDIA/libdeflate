@@ -28,7 +28,7 @@
 #ifndef COMMON_COMMON_DEFS_H
 #define COMMON_COMMON_DEFS_H
 
-#ifdef __GNUC__
+#if defined(__GNUC__) || defined(__clang__)
 #  include "compiler_gcc.h"
 #elif defined(_MSC_VER)
 #  include "compiler_msc.h"
